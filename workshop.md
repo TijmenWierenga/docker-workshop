@@ -240,7 +240,37 @@ Tot nu toe hebben we gewerkt met bestaande images, maar om een eigen applicatie 
 Je eigen image definiëer je door layers toe te voegen aan een base image.
 
 ``` sh
-FROM php:7.2
+FROM php:7.2-alpine
 LABEL maintainer="twieren0@xs4all.net"
+
+CMD ["-f", "/var/www/html/app.php"]
 ```
 
+Hier voegen we een label toe en overschrijven we de default command van de base image.
+
+Om de image te creëren run je het volgende command:
+``` sh
+docker build -t xs4all/counter:dev .
+```
+
+Na het bouwen kunnen we de image draaien met `docker run`:
+``` sh
+docker run --rm xs4all/counter:dev
+```
+
+De response is logisch:
+``` sh
+Could not open input file: /var/www/html/app.php
+```
+
+We hebben gespecificeerd dat onze container het php-bestand `/var/www/html/app.php` moet uitvoeren, echter bestaat dit bestand niet in onze container. Om dit te bewerkstelligen moeten we wederom een volume mounten om de applicatie draaiend te krijgen:
+``` sh
+docker run --rm -v $(pwd)/app.php:/var/www/html/app.php xs4all/counter:dev
+```
+
+Nu `app.php` in de container draait kunnen we onze app draaien, echter heeft de applicatie nog zijn eigen dependencies:
+``` sh 
+Warning: require_once(vendor/autoload.php): failed to open stream: No such file or directory in /var/www/html/app.php on line 2
+
+Fatal error: require_once(): Failed opening required 'vendor/autoload.php' (include_path='.:/usr/local/lib/php') in /var/www/html/app.php on line 2
+```
