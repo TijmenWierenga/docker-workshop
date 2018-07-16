@@ -1,0 +1,13 @@
+{
+    "name": "xs4all/counter-demo",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tijmen Wierenga",
+            "email": "twieren0@xs4all.net"
+        }
+    ],
+    "require": {
+        "react/event-loop": "^1.0"
+    }
+}
