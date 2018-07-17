@@ -1,0 +1,18 @@
+FROM composer:latest as composer
+
+FROM php:7.2-alpine
+LABEL maintainer="twieren0@xs4all.net"
+
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+RUN mkdir -p /var/www/html && chown -R www-data:www-data /var/www/html
+
+USER www-data
+WORKDIR /var/www/html
+
+COPY --chown=www-data . /var/www/html/
+
+RUN composer install --no-scripts --no-autoloader
+RUN composer dump-autoload --optimize
+
+CMD ["-f", "/var/www/html/app.php"]
