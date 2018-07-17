@@ -1,0 +1,20 @@
+version: '3.3'
+
+services:
+  app:
+    image: xs4all/counter:${VERSION-dev}
+    build:
+      dockerfile: Dockerfile-multistage
+      context: .
+    networks:
+      - private
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:4.0
+    networks:
+      - private
+
+networks:
+  private:
