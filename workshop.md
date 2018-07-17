@@ -254,11 +254,12 @@ Voor deze demo is een git repository aangemaakt. Deze moeten we eerst binnenhale
 git clone https://github.com/TijmenWierenga/docker-workshop.git demo
 cd demo
 git checkout feature/dockerfile
+cd app
 ```
 
 Om de image te creëren run je het volgende command:  
 ``` sh  
-docker build -t xs4all/counter:dev ./app
+docker build -t xs4all/counter:dev .
 ```  
   
 Na het bouwen kunnen we de image draaien met `docker run`:  
@@ -349,3 +350,23 @@ Containers erven het authenticatie-systeem van de base image. In dit geval moete
 Vervolgens kopiëren we de source code in zijn volledigheid naar de `/var/www/html/` directory. De `Dockerfile` zelf en de `.gitignore` file zijn niet nodig in de image, dus die excluden we middels een `.dockerignore`.
 
 Tenslotte draaien we `composer install` en `composer dump-autoload` als twee afzonderlijke commands. De reden hiervoor is dat `composer install` enkel een dependency heeft op `composer.json` en `composer.lock` en de `composer dump-autoload` alles source files nodig heeft. Omdat Docker gebruik maakt van build-cache maken we hierdoor optimaal gebruik van caching. Dit voorkomt dat we iedere keer opnieuw een `composer install` moeten draaien terwijl we enkel onze autoloader hoeven te herbouwen.
+
+Laten we nu eerst de vendor folder verwijderen om te bewijzen dat deze image daadwerkelijk geen dependencies meer heeft behalve de source code van de repository:
+``` sh
+rm -R vendor
+```
+
+En dan bouwen we de image opnieuw met onze multi-stage Dockerfile:
+``` sh
+docker build -f Dockerfile-multistage -t xs4all/counter:dev .
+```
+
+En run it:
+``` sh
+docker run --rm xs4all/counter:dev
+```
+
+De image is nu stand-alone te draaien op elke andere Docker daemon.
+
+## Networking
+Tot nu toe hebben we enkel gewerkt met losse containers. Een kracht van Docker is dat het native networking tussen containers ondersteund. Door je eigen netwerken kun je heel simpel instellen welke containers met elkaar kunnen communiceren.
