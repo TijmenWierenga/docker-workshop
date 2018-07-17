@@ -422,3 +422,53 @@ docker run --rm --network counter_private xs4all/counter:dev
 ```
 
 Als we de container meerdere keren draaien zul je zien dat de counter bijhoudt waar de laatste counter is gestopt met tellen.
+
+## Docker Compose
+Alle commands die we tot nu toe hebben gebruikt zijn in `docker-compose` gebundeld tot een handige binary die een gecomposeerde `yml` file omzet tot een docker architectuur.
+
+Laten we een nieuwe node toevoegen en kijken hoe we al onze Docker commands kunnen reproduceren in `docker-compose`.
+
+Omdat we in een nieuwe node werken hebben we eerst onze git repository weer nodig:
+``` bash
+git clone https://github.com/TijmenWierenga/docker-workshop.git demo
+cd demo
+git checkout feature/networking
+cd app
+```
+
+Vervolgens draaien we:
+``` bash
+docker-compose up
+```
+
+En op de achtergrond heeft Docker het volgende uitgevoerd:
+* Redis gepulled uit de Docker Hub
+* Redis opgestart in een container
+* Redis toegevoegd aan het `private` network
+* De `xs4all/counter` image gebouwd en getagged met `dev`
+* De `xs4all/counter` container gestart
+* De `xs4all/counter` image toegevoegd aan het `private` network
+
+En dat allemaal door middel van een enkel configuratie-bestand:
+``` yml
+version: '3.3'  
+  
+services:  
+ app: 
+	image: xs4all/counter:${VERSION-dev}  
+	build:  
+		dockerfile: Dockerfile-multistage  
+	    context: .  
+    networks:  
+		- private  
+    depends_on:  
+		- redis  
+  
+  redis:  
+	image: redis:4.0  
+	networks:  
+		- private  
+  
+networks:  
+	private:
+```
