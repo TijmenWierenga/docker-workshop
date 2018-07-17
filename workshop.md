@@ -4,7 +4,8 @@
 ## Inhoud  
 * Wat zijn containers?  
 * Docker Basics  
-* Eigen images bouwen  
+* Eigen images bouwen 
+* Netwerken
   
 ## Wat zijn containers?  
 Docker is een container platform. Dus voor we het over Docker hebben is het belangrijker om te definiëren wat containers zijn.  
@@ -59,35 +60,22 @@ Docker is een platform die het uitrollen en managen van containers faciliteert.
    * Instellen van environment variables  
   
 ## Docker Basics  
-* Runnen van een image  
-* Het maken van een eigen image (Dockerfile)  
-* Environment variables  
-* Volumes  
-   * Voorbeeld van een volume  
-   * Waarom je geen volumes mount in productie (pets versus cattle)  
-* Ports  
-* Dependency management  
-* Optimaliseren van een Dockerfile  
-* Docker-compose voor service orchestration  
-   * Services definiëren  
-   * Services koppelen via een netwerk  
-* Docker Swarm  
   
 ### Docker Pull  
 Download een image uit een registry (normaal gesproken Docker Hub)  
-``` sh  
+``` bash  
 docker pull hello-world  
 ```  
 Zonder een specifieke versie te noemen download Docker altijd de meest recente versie (latest).  
 Door een `colon` toe te voegen als postfix kun je een specifieke versie downloaden. In onderstaande situatie downloaden we Apache versie 2.4.* (images volgen semver).  
   
-``` sh  
+``` bash  
 docker pull httpd:2.4  
 ```  
   
 ### Docker Run  
 Runt een image als een container:  
-``` sh  
+``` bash  
 docker run hello-world  
 ```  
   
@@ -97,7 +85,7 @@ De Docker CLI heeft het grootste deel van zijn functionaliteit dezelfde namen ge
 Niet alle processen zijn long-running en daarom is het resultaat op dit moment ook dat er geen huidige container draaien op de Docker kernel.  
   
 Om alle (ook gestopte) containers te zien moeten we specifieker zijn in wat we als output willen. Met `docker ps --help` kunnen we de opties van `ps` bekijken:  
-``` sh  
+``` bash  
 Usage:  docker ps [OPTIONS]  
   
 List containers  
@@ -114,7 +102,7 @@ Options:
 ```   
   
 Dus nu we specifieker zijn kunnen we zien dat onze container gestopt is:  
-``` sh  
+``` bash  
 $ docker ps --all  
   
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS                      PORTS               NAMES  
@@ -125,7 +113,7 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 Nu we weten hoe we Docker containers moeten starten willen we ze ook kunnen stoppen.  
 Laten we eerst een nieuwe container starten. Dit keer gaan we een Apache container starten om een statische web applicatie te draaien:  
   
-``` sh  
+``` bash  
 $ docker run httpd:2.4  
 AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.17.0.2. Set the 'ServerName' directive globally to suppress this message  
 AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.17.0.2. Set the 'ServerName' directive globally to suppress this message  
@@ -137,20 +125,20 @@ Apache is een long-running process. Omdat Docker als default containers in de vo
   
 Om de container in de achtergrond te starten kunnen we gebruik maken de `deamonized` optie:  
   
-``` sh  
+``` bash  
 $ docker run -d httpd:2.4  
 7102713e6f4d7ec3b27a464a4551825b91781d57e1f11eee89bca05f92edb6e5  
 ```  
 De output is de identifier van de container.  
   
 Om te verifiëren dat de container draait runnen we nogmaals `docker ps`:  
-``` sh  
+``` bash  
 CONTAINER ID        IMAGE               COMMAND              CREATED              STATUS              PORTS               NAMES  
 7102713e6f4d        httpd:2.4           "httpd-foreground"   About a minute ago   Up About a minute   80/tcp              affectionate_clarke  
 ```  
   
 Toch is de container niet bereikbaar voor verkeer omdat we geen port hebben gemapped:  
-``` sh  
+``` bash  
 curl localhost  
 curl: (7) Failed to connect to localhost port 80: Connection refused  
 ```  
@@ -158,59 +146,59 @@ curl: (7) Failed to connect to localhost port 80: Connection refused
 We zullen de container dus opnieuw moeten starten met de juiste port mapping. Zolang port 80 niet open staat kan de container niet communiceren met de buitenwereld. Dit introduceert dus automatisch een veiligheidsrisico. Alles wat we naar buiten openstellen kan potentieel worden gehackt. Dus wees altijd kritisch wanneer je poorten open zet.  
   
 Stop de container met:  
-``` sh  
+``` bash  
 docker stop 7102713e6f4d  
 ```  
   
 Herstart de container vervolgens met de juiste configuratie:  
-``` sh  
+``` bash  
 docker run -d -p 80:80 --name apache httpd:2.4  
 ```  
   
 En verifieer dat Apache draait:  
-``` sh  
+``` bash  
 $ curl localhost  
 <html><body><h1>It works!</h1></body></html>  
 ```  
   
 Nu we de container een naam hebben gegeven, kunnen we in plaats van de identifier ook de naam gebruiken om acties uit te voeren op de container:  
-``` sh  
+``` bash  
 docker stop apache  
 ```  
   
 Een gestopte container kan ook weer worden herstart:  
-``` sh  
+``` bash  
 docker start apache  
 ```  
-``` sh  
+``` bash  
 $ curl localhost  
 <html><body><h1>It works!</h1></body></html>  
 ```  
 Als je een kill signal wilt sturen om de container niet 'gracefully' te stoppen, gebruik dan `docker kill`:  
-``` sh  
+``` bash  
 docker kill apache  
 ```  
   
 ### Docker RM  
 Tijdens deze workshop hebben we al een aantal Docker containers gestart en gestopt. Ondanks dat al onze containers zijn gestopt staan ze nog wel in het geheugen. Om een container te verwijderen kunnen we het volgende doen:  
-``` sh  
+``` bash  
 docker rm apache  
 ```  
   
 ### Docker volumes  
 Om bestanden van je file system in de container te krijgen kunnen we gebruik maken van volume mounts.  
   
-``` sh  
+``` bash  
 echo "<h1>XS4ALL</h1>" >> index.html  
 ```  
   
-``` sh  
+``` bash  
 docker run -dit --name apache -p 80:80 -v $(pwd)/index.html:/usr/local/apache2/htdocs/index.html httpd:2.4  
 ```  
   
 Volume mounts zijn zeer geschikt voor development. Iedere wijziging in zowel de container als op je lokale filesystem wordt op beide plaatsen gesynced.  
   
-``` sh  
+``` bash  
 echo "<p>Welkom bij de Docker workshop</p>" >> index.html  
 ```  
   
@@ -218,7 +206,7 @@ Zoals je ziet is de paragraaf direct toegevoegd aan de container.
   
 Een ander voordeel van volume mounts is dat je wijzigingen behouden blijven als je container sterft. Laten we dat simuleren door de container te killen:  
   
-``` sh  
+``` bash  
 docker kill apache && docker rm apache  
 ```  
   
@@ -229,7 +217,7 @@ Als we de container vervolgens weer starten zul je zien dat al onze wijzigingen 
 ### Docker exec  
 Soms wil je in een draaiende container operaties uitvoeren. Dit kan met `docker exec`. Laten we nog een paragraaf toevoegen aan onze statische web applicatie:  
   
-``` sh  
+``` bash  
 $ docker exec -it apache sh  
 # echo "<p>Another one!</p>" >> /usr/local/apache2/htdocs/index.html  
 ```  
@@ -240,7 +228,7 @@ Tot nu toe hebben we gewerkt met bestaande images, maar om een eigen applicatie 
 ### Dockerfile  
 Je eigen image definiëer je door layers toe te voegen aan een base image.  
   
-``` sh  
+``` bash  
 FROM php:7.2-alpine  
 LABEL maintainer="twieren0@xs4all.net"  
   
@@ -250,7 +238,7 @@ CMD ["-f", "/var/www/html/app.php"]
 Hier voegen we een label toe en overschrijven we de default command van de base image.  
   
 Voor deze demo is een git repository aangemaakt. Deze moeten we eerst binnenhalen voordat we door kunnen gaan met deze demo:
-``` sh
+``` bash
 git clone https://github.com/TijmenWierenga/docker-workshop.git demo
 cd demo
 git checkout feature/dockerfile
@@ -258,39 +246,39 @@ cd app
 ```
 
 Om de image te creëren run je het volgende command:  
-``` sh  
+``` bash  
 docker build -t xs4all/counter:dev .
 ```  
   
 Na het bouwen kunnen we de image draaien met `docker run`:  
-``` sh  
+``` bash  
 docker run --rm xs4all/counter:dev  
 ```  
   
 De response is logisch:  
-``` sh  
+``` bash  
 Could not open input file: /var/www/html/app.php  
 ```  
   
 We hebben gespecificeerd dat onze container het php-bestand `/var/www/html/app.php` moet uitvoeren, echter bestaat dit bestand niet in onze container. Om dit te bewerkstelligen moeten we wederom een volume mounten om de applicatie draaiend te krijgen:  
-``` sh  
+``` bash  
 docker run --rm -v $(pwd)/app.php:/var/www/html/app.php xs4all/counter:dev  
 ```  
   
 Nu `app.php` in de container draait kunnen we onze app draaien, echter heeft de applicatie nog zijn eigen dependencies:  
-``` sh   
+``` bash   
 Warning: require_once(vendor/autoload.php): failed to open stream: No such file or directory in /var/www/html/app.php on line 2  
   
 Fatal error: require_once(): Failed opening required 'vendor/autoload.php' (include_path='.:/usr/local/lib/php') in /var/www/html/app.php on line 2  
 ```
 
 In dit geval kunnen we Docker gebruiken om onze composer dependencies te installeren zonder composer op ons OS te installeren:
-``` sh
+``` bash
 docker run -it --rm -v $(pwd):/app -u $(id -u):$(id- g) composer install
 ```
 
 Nu kunnen we onze app draaien, mits we ook onze vendor folder in de container mounten:
-``` sh
+``` bash
 docker run --rm -v $(pwd)/app.php:/var/www/html/app.php -v $(pwd)/vendor:/var/www/html/vendor xs4all/counter:dev
 ```
 
@@ -299,7 +287,7 @@ Ondanks dat de applicatie nu draait, heeft deze implementatie een harde dependen
 > The image defined by your `Dockerfile` should generate containers that are as ephemeral as possible. By “ephemeral,” we mean that the container can be stopped and destroyed, then rebuilt and replaced with an absolute minimum set up and configuration. *- Docker Best Practises*
 
 Om dit te verbeteren kunnen we onze source code onderdeel van de repository maken. Dit doen we door  `COPY` statements in onze Dockerfile te zetten:
-``` sh
+``` bash
 FROM php:7.2-alpine  
 LABEL maintainer="twieren0@xs4all.net"  
 
@@ -310,19 +298,19 @@ CMD ["-f", "/var/www/html/app.php"]
 ```
 
 Wanneer we de Dockerfile nu bouwen, zijn al onze dependencies geïntegreerd in de image. Laten we de applicatie nogmaals opnieuw bouwen:
-``` sh
+``` bash
 docker build -t xs4all/counter:dev .
 ```
 
 En runnen:
-``` sh
+``` bash
 docker run --rm xs4all/counter:dev
 ```
 
 ### Multi-stage builds
 De laatste dependency die we hebben zijn onze composer dependencies. Even geleden hebben we onze composer dependencies geïnstalleerd met een Docker command om onze `vendor` map te maken. Dit betekent dat iedereen deze applicatie wil bouwen, dit ook moet doen. Dit kunnen we oplossen door een multi-stage build te gebruiken.
 
-``` sh
+``` bash
 FROM composer:latest as composer  
   
 FROM php:7.2-alpine  
@@ -352,21 +340,85 @@ Vervolgens kopiëren we de source code in zijn volledigheid naar de `/var/www/ht
 Tenslotte draaien we `composer install` en `composer dump-autoload` als twee afzonderlijke commands. De reden hiervoor is dat `composer install` enkel een dependency heeft op `composer.json` en `composer.lock` en de `composer dump-autoload` alles source files nodig heeft. Omdat Docker gebruik maakt van build-cache maken we hierdoor optimaal gebruik van caching. Dit voorkomt dat we iedere keer opnieuw een `composer install` moeten draaien terwijl we enkel onze autoloader hoeven te herbouwen.
 
 Laten we nu eerst de vendor folder verwijderen om te bewijzen dat deze image daadwerkelijk geen dependencies meer heeft behalve de source code van de repository:
-``` sh
+``` bash
 rm -R vendor
 ```
 
 En dan bouwen we de image opnieuw met onze multi-stage Dockerfile:
-``` sh
+``` bash
 docker build -f Dockerfile-multistage -t xs4all/counter:dev .
 ```
 
 En run it:
-``` sh
+``` bash
 docker run --rm xs4all/counter:dev
 ```
 
 De image is nu stand-alone te draaien op elke andere Docker daemon.
 
 ## Networking
-Tot nu toe hebben we enkel gewerkt met losse containers. Een kracht van Docker is dat het native networking tussen containers ondersteund. Door je eigen netwerken kun je heel simpel instellen welke containers met elkaar kunnen communiceren.
+Tot nu toe hebben we enkel gewerkt met losse containers. Een kracht van Docker is dat het native networking tussen containers ondersteund. Door je eigen netwerken te definiëren kun je instellen welke containers met elkaar kunnen communiceren.
+
+Om een nieuw netwerk aan te maken voer je het volgende command uit:
+``` bash
+docker network create counter_private
+```
+
+We hebben nu een netwerk gemaakt met de naam `counter_private`. De volgende stap is om containers aan te sluiten bij dit netwerk. Om onze counter-app uit te breiden gaan we een database koppelen. Hiervoor gebruiken we Redis. De reden hiervoor is dat Redis in-memory draait en dus onafhankelijk van een daadwerkelijke persistence layer kan opereren. Haal eerst de laatste stabiele versie van Redis binnen met:
+``` bash
+docker pull redis:4.0
+```
+
+Vervolgens gaan we een Redis container starten en koppelen we deze met het netwerk zodat alle containers binnen het netwerk met Redis kunnen communiceren:
+``` bash
+docker run -d --rm --name redis --network counter_private redis:4.0
+```
+
+Check `docker ps` om te bevestigen dat de Redis container gestart is.
+Hierna kunnen we verifiëren dat de container daadwerkelijk is toegevoegd aan het netwerk:
+``` bash
+docker network inspect counter_private
+```
+
+Of om rechtstreeks de toegevoegde containers te bekijken:
+``` bash
+docker network inspect counter_private --format '{{json .Containers }}' | jq
+```
+
+De output is als volgt:
+``` bash
+{
+  "4d8442ff632a20df8dac427e8ddfa74d0113bca46c0aa1efd58f6577871dc93b": {
+    "Name": "redis",
+    "EndpointID": "40e07dd950069a7328bad03bce95e429742ae286416ec0e1e007357c612a9858",
+    "MacAddress": "02:42:ac:13:00:02",
+    "IPv4Address": "172.19.0.2/16",
+    "IPv6Address": ""
+  }
+}
+```
+
+Het grote voordeel van Docker is dat netwerken aan de hand van de naam van de container aliassen configureert als hostname. In dit geval is de hostname bereikbaar op `redis:6379`.
+
+Switch nu naar een andere branch van de applicatie waar de koppeling met Redis is gemaakt:
+``` bash
+git checkout feature/networking
+```
+
+Een kleine aanpassing van de applicatie is noodzakelijk om Redis toe te voegen als database om wijzigingen in de counter te tracken:
+``` php
+$redis = new \Predis\Client([  
+  'scheme' => 'tcp',  
+  'host' => 'redis',  
+  'port' => 6379,  
+]);
+```
+
+Zoals je ziet kunnen we simpelweg de container name als alias gebruiken. Dit is het enige wat nodig is om networking te laten werken in Docker.
+
+Om de code te kunnen draaien is het wel essentieel dat we onze container laten verbinden met het `counter_private` network:
+``` bash
+docker run --rm --network counter_private xs4all/counter:dev
+```
+
+Als we de container meerdere keren draaien zul je zien dat de counter bijhoudt waar de laatste counter is gestopt met tellen.
